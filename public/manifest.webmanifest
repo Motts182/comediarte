@@ -1,0 +1,9 @@
+{
+  "name": "Comediarte · Caja",
+  "short_name": "Comediarte",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#15131b",
+  "theme_color": "#15131b",
+  "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}
