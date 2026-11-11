@@ -21,8 +21,10 @@ export function fileKV(dir: string): KV {
     async get<T>(key: string) {
       return key in data ? (structuredClone(data[key]) as T) : null;
     },
-    async set(key, value) {
-      data[key] = structuredClone(value);
+    // Sin esperas entre leer y escribir: en un único proceso de Node esto ya es atómico.
+    async update<T>(key: string, change: (current: T | null) => T) {
+      const current = key in data ? (structuredClone(data[key]) as T) : null;
+      data[key] = structuredClone(change(current));
       persist();
     },
     async list(prefix) {

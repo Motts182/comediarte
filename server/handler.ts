@@ -12,8 +12,14 @@
 
 export interface KV {
   get<T>(key: string): Promise<T | null>;
-  set(key: string, value: unknown): Promise<void>;
   list(prefix: string): Promise<string[]>;
+  /**
+   * Lee el valor, lo transforma y lo guarda como una sola operación: si otro escribe entre
+   * la lectura y la escritura, se repite sobre el valor nuevo en vez de pisarlo. Sin esto,
+   * dos personas guardando un producto en el mismo instante se borrarían el cambio una a otra.
+   * `change` puede ejecutarse más de una vez.
+   */
+  update<T>(key: string, change: (current: T | null) => T): Promise<void>;
 }
 
 interface Doc {
@@ -82,11 +88,13 @@ async function route(req: Request, kv: KV): Promise<Response> {
   if (COLLECTIONS.has(collection) && parts.length === 2 && method === 'PUT') {
     const doc = await readBody(req);
     if (!isDoc(doc) || doc.id !== id) throw new HttpError(400, 'Documento inválido');
-    const docs = (await kv.get<Doc[]>(collection)) ?? [];
-    const index = docs.findIndex((item) => item.id === doc.id);
-    if (index < 0) docs.push(doc);
-    else if (doc.updatedAt >= docs[index].updatedAt) docs[index] = doc;
-    await kv.set(collection, docs);
+    await kv.update<Doc[]>(collection, (current) => {
+      const docs = current ?? [];
+      const index = docs.findIndex((item) => item.id === doc.id);
+      if (index < 0) docs.push(doc);
+      else if (doc.updatedAt >= docs[index].updatedAt) docs[index] = doc;
+      return docs;
+    });
     return json({ ok: true });
   }
 
@@ -109,23 +117,24 @@ async function route(req: Request, kv: KV): Promise<Response> {
       const sales = Array.isArray(body.sales) ? body.sales.filter(isSale) : [];
       const deleted = Array.isArray(body.deleted) ? body.deleted.filter(isId) : [];
 
-      const key = prefix + device;
-      const log = (await kv.get<DeviceLog>(key)) ?? { device, sales: [], deleted: [] };
-      const have = new Set(log.sales.map((sale) => sale.id));
-      for (const sale of sales) {
-        if (!have.has(sale.id)) {
-          have.add(sale.id);
-          log.sales.push(sale);
+      await kv.update<DeviceLog>(prefix + device, (current) => {
+        const log = current ?? { device, sales: [], deleted: [] };
+        const have = new Set(log.sales.map((sale) => sale.id));
+        for (const sale of sales) {
+          if (!have.has(sale.id)) {
+            have.add(sale.id);
+            log.sales.push(sale);
+          }
         }
-      }
-      const dead = new Set(log.deleted);
-      for (const saleId of deleted) {
-        if (!dead.has(saleId)) {
-          dead.add(saleId);
-          log.deleted.push(saleId);
+        const dead = new Set(log.deleted);
+        for (const saleId of deleted) {
+          if (!dead.has(saleId)) {
+            dead.add(saleId);
+            log.deleted.push(saleId);
+          }
         }
-      }
-      await kv.set(key, log);
+        return log;
+      });
       return json({ ok: true });
     }
   }

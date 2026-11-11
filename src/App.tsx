@@ -5,13 +5,17 @@ import { useCollection } from './lib/useCollection';
 import { Catalog } from './screens/Catalog';
 import { EventView } from './screens/EventView';
 import { Home } from './screens/Home';
-import { ToastHost } from './ui/toast';
+import { dismissToast, ToastHost } from './ui/toast';
 
 /** Rutas por hash (#/, #/carta, #/e/<id>): funcionan en cualquier hosting estático sin configurar nada. */
 function useHash(): string {
   const [hash, setHash] = useState(location.hash);
   useEffect(() => {
-    const onChange = () => setHash(location.hash);
+    const onChange = () => {
+      // Un aviso de la pantalla anterior ("Cobrado… Deshacer") no debe tapar la nueva.
+      dismissToast();
+      setHash(location.hash);
+    };
     window.addEventListener('hashchange', onChange);
     return () => window.removeEventListener('hashchange', onChange);
   }, []);

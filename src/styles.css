@@ -112,6 +112,22 @@ ul {
   margin: 0 auto;
 }
 
+/* El plan gratuito de Netlify superpone en la esquina inferior derecha un distintivo
+   (un iframe fijo de 197×64 px, #nl-badge-frame) que el visitante no puede cerrar y que
+   tapaba las pestañas Comida y Resumen. Mientras exista, la app deja libre esa franja. */
+html:has(#nl-badge-frame) .app {
+  height: calc(100vh - 64px);
+  height: calc(100dvh - 64px);
+}
+
+html:has(#nl-badge-frame) .tabbar {
+  padding-bottom: 0;
+}
+
+html:has(#nl-badge-frame) .modal-backdrop {
+  padding-bottom: 80px;
+}
+
 .screen {
   display: flex;
   flex-direction: column;

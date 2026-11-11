@@ -21,7 +21,9 @@ function subscribe(listener: () => void) {
   };
 }
 
-function dismiss() {
+/** Quita el aviso visible, si lo hay. Se usa también al cambiar de pantalla. */
+export function dismissToast(): void {
+  if (!current) return;
   clearTimeout(timer);
   current = null;
   emit();
@@ -32,7 +34,7 @@ export function toast(text: string, action?: ToastData['action']): void {
   clearTimeout(timer);
   current = { id: Date.now(), text, action };
   emit();
-  timer = setTimeout(dismiss, action ? 6000 : 2500);
+  timer = setTimeout(dismissToast, action ? 6000 : 2500);
 }
 
 export function ToastHost() {
@@ -47,7 +49,7 @@ export function ToastHost() {
           type="button"
           onClick={() => {
             action.run();
-            dismiss();
+            dismissToast();
           }}
         >
           {action.label}
